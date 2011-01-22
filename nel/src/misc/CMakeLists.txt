@@ -1,0 +1,64 @@
+FILE(GLOB SRC *.cpp *.h config_file/*.cpp config_file/*.h)
+FILE(GLOB HEADERS ../../include/nel/misc/*.h)
+
+NL_TARGET_LIB(nelmisc ${HEADERS} ${SRC})
+
+IF(WITH_GTK)
+  IF(GTK2_FOUND)
+    INCLUDE_DIRECTORIES(${GTK2_INCLUDE_DIRS})
+    ADD_DEFINITIONS(-DNL_USE_GTK)
+    TARGET_LINK_LIBRARIES(nelmisc ${GTK2_LIBRARIES})
+  ENDIF(GTK2_FOUND)
+ENDIF(WITH_GTK)
+
+IF(JPEG_FOUND)
+  INCLUDE_DIRECTORIES(${JPEG_INCLUDE_DIR})
+  ADD_DEFINITIONS(-DUSE_JPEG)
+  TARGET_LINK_LIBRARIES(nelmisc ${JPEG_LIBRARY})
+ENDIF(JPEG_FOUND)
+
+IF(WITH_STATIC OR WIN32)
+  TARGET_LINK_LIBRARIES(nelmisc ${PNG_LIBRARIES})
+ELSE(WITH_STATIC OR WIN32)
+  # Link only with libpng shared library
+  TARGET_LINK_LIBRARIES(nelmisc ${PNG_LIBRARY})
+ENDIF(WITH_STATIC OR WIN32)
+
+# For DirectInput (di_event_emitter)
+IF(WIN32)
+  INCLUDE_DIRECTORIES(${DXSDK_INCLUDE_DIR})
+  TARGET_LINK_LIBRARIES(nelmisc ${DXSDK_DINPUT_LIBRARY} ${DXSDK_GUID_LIBRARY})
+ENDIF(WIN32)
+
+IF(UNIX)
+  TARGET_LINK_LIBRARIES(nelmisc -lc -ldl)
+  IF(NOT APPLE)
+    TARGET_LINK_LIBRARIES(nelmisc -lrt)
+  ENDIF(NOT APPLE)
+ENDIF(UNIX)
+
+INCLUDE_DIRECTORIES(${LIBXML2_INCLUDE_DIR} ${PNG_INCLUDE_DIR} config_file)
+
+TARGET_LINK_LIBRARIES(nelmisc ${CMAKE_THREAD_LIBS_INIT} ${LIBXML2_LIBRARIES})
+SET_TARGET_PROPERTIES(nelmisc PROPERTIES LINK_INTERFACE_LIBRARIES "")
+NL_DEFAULT_PROPS(nelmisc "NeL, Library: NeL Misc")
+NL_ADD_RUNTIME_FLAGS(nelmisc)
+
+NL_ADD_LIB_SUFFIX(nelmisc)
+
+ADD_DEFINITIONS(${LIBXML2_DEFINITIONS})
+
+IF(WITH_STATIC)
+# acemtp: it's because my gcc is too old and cannot optimize this file
+# on old gcc used to compile static ryzom, if you compile rgba with full optim, there's a visual bug (blue people)
+SET_SOURCE_FILES_PROPERTIES(rgba.cpp PROPERTIES COMPILE_FLAGS "-O0")
+ENDIF(WITH_STATIC)
+
+IF(WITH_PCH AND NOT WITH_STATIC)
+# acemtp: it's because my gcc is too old and cannot optimize this file
+# removed the pch or we cannot define -O0 for the rgba specificaly
+ADD_NATIVE_PRECOMPILED_HEADER(nelmisc ${CMAKE_CURRENT_SOURCE_DIR}/stdmisc.h ${CMAKE_CURRENT_SOURCE_DIR}/stdmisc.cpp)
+ENDIF(WITH_PCH AND NOT WITH_STATIC)
+
+NL_GEN_PC(nel-misc.pc)
+INSTALL(TARGETS nelmisc LIBRARY DESTINATION lib ARCHIVE DESTINATION lib COMPONENT libraries)
